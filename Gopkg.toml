@@ -1,0 +1,15 @@
+[[constraint]]
+  name = "github.com/go-chi/chi"
+  version = "3.3.1"
+
+[[constraint]]
+  name = "github.com/go-chi/render"
+  version = "1.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/oauth2"
+
+[[constraint]]
+  branch = "master"
+  name = "google.golang.org/api"
