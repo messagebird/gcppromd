@@ -73,10 +73,10 @@ GCPPromd returns an array of `<static_config>`, you can automatically write that
 Prometheus will reload the configuration automatically.
 
 ### I don't see any labels?
-All the emitted labels are prefixed with  `__meta` you need to explicitly relabel to pick what you need.  
+All emitted labels are prefixed with  `__meta` you need to explicitly relabel to pick what you need.  
 For example, assuming that the output of `GET /v1/gce/instances` is written in `/var/local/gcppromd/gcppromd_v1_gce_instances.json`:
 
-```
+```yaml
 - job_name: 'gce_auto_discovery'
 
   file_sd_configs:
