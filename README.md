@@ -1,6 +1,6 @@
 # gcppromd
 
-`GCPPromd` provides Google Compute Engine auto-discovery for Prometheus.
+GCPPromd provides Google Compute Engine  auto-discovery for Prometheus.
 
 ## Configuration
 
