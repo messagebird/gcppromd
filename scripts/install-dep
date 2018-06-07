@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -e
+
+if [ -z "$GO_DEP_URL" ]; then
+    >&2 echo "missing GO_DEP_URL"
+    exit 1
+fi
+
+if [ -z "$GO_DEP_SUM" ]; then
+    >&2 echo "missing GO_DEP_SUM"
+    exit 1
+fi
+
+curl -L -s ${GO_DEP_URL} -o ${GOPATH}/bin/dep
+sha256sum -c <(echo "${GO_DEP_SUM}  ${GOPATH}/bin/dep")
+chmod +x ${GOPATH}/bin/dep
