@@ -27,7 +27,7 @@ mkdir -p ${BIN_DIR}
 build_for linux amd64
 build_for darwin amd64
 
-docker build . -t ${USER}/${REPO}:${VERSION} ${USER}/${REPO}:latest
+docker build -t ${USER}/${REPO}:${VERSION} .
 
 git tag -a $VERSION -m "version $VERSION"
 
@@ -48,4 +48,5 @@ for release_file in $(ls ${BIN_DIR}); do
 done
 
 docker push ${USER}/${REPO}:${VERSION}
+docker tag ${USER}/${REPO}:${VERSION} ${USER}/${REPO}:latest
 docker push ${USER}/${REPO}:latest
