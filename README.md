@@ -1,6 +1,6 @@
 # gcppromd
 
-`GCPPromd` is an auto discovery GCE targets configuration for prometheus.
+GCPPromd provides Google Compute Engine  auto-discovery for Prometheus.
 
 ## Configuration
 
