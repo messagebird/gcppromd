@@ -16,7 +16,7 @@ if [ -z "$VERSION" ]; then
 fi
 
 function build_for {
-    BIN_NAME="bin/${REPO}-$VERSION.$1-$2"
+    BIN_NAME="bin/${REPO}-${VERSION}.$1-$2"
     GOOS=$1 GOARCH=$2 CGO_ENABLED=0 go build -ldflags "-s -w" -o ${BIN_NAME} ${BIN_PACKAGE}
     shasum -a 256 ${BIN_NAME} > ${BIN_NAME}.sha256
 }
@@ -26,6 +26,8 @@ mkdir -p ${BIN_DIR}
 
 build_for linux amd64
 build_for darwin amd64
+
+docker build . -t ${USER}/${REPO}:${VERSION} ${USER}/${REPO}:latest
 
 git tag -a $VERSION -m "version $VERSION"
 
@@ -45,30 +47,5 @@ for release_file in $(ls ${BIN_DIR}); do
         --file "${BIN_DIR}/${release_file}"
 done
 
-#
-# rm -rf "bin/${REPO}-${VERSION}.linux-amd64"
-# mkdir "bin/${REPO}-${VERSION}.linux-amd64"
-#
-# env GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o "bin/sachet-$VERSION.linux-amd64/${REPO}" github.com/$USER/${REPO}/cmd/${REPO}
-# cd bin
-# tar -zcvf "${REPO}-$VERSION.linux-amd64.tar.gz" "${REPO}-$VERSION.linux-amd64"
-#
-# # go get -u github.com/aktau/github-release
-# # dont forget to set your token like
-# # export GITHUB_TOKEN=blabla
-# git tag -a $VERSION -m "version $VERSION"
-#
-# github-release release \
-#     --user $GITHUB_USER \
-#     --repo $GITHUB_REPO \
-#     --tag $VERSION \
-#     --name $VERSION \
-#     --description "version $VERSION!"
-#
-#
-# github-release upload \
-#     --user $GITHUB_USER \
-#     --repo $GITHUB_REPO \
-#     --tag $VERSION \
-#     --name "${REPO}-$VERSION.linux-amd64.tar.gz" \
-#     --file "${REPO}-$VERSION.linux-amd64.tar.gz"
+docker push ${USER}/${REPO}:${VERSION}
+docker push ${USER}/${REPO}:latest
