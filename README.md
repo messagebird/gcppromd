@@ -54,7 +54,7 @@ These are useful for automatically discovering instances behind a load-balancer.
 
 ## Authentication
 
-To authenticate with the google cloud APIs you can use the[Application Default Credentials process](https://cloud.google.com/docs/authentication/production) or set specific credentials using the `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
+To authenticate with the google cloud APIs you can use the [Application Default Credentials process](https://cloud.google.com/docs/authentication/production) or set specific credentials using the `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
 
 Thse credentials need to have the API scope `https://www.googleapis.com/auth/compute.readonly`. 
 
@@ -65,7 +65,7 @@ No errors are ever returned by the API. They are only logged.
 ## FAQ
 ### In what this is different than [`gce_sd_configs`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#%3Cgce_sd_config%3E)?
 
-Built in support for GCE in prometheus requires you to manually declare all your projects and zones. This can be tedious when you need to map many Goole projects across multiple zones.
+Built in support for GCE in prometheus requires you to manually declare all your projects and zones. This can be tedious when you need to map many Google projects across multiple zones.
 
 ### How do I pass the discovered instances to prometheus?
 
