@@ -10,6 +10,13 @@ Usage of gcppromd:
     	HTTP listen address (default ":8080")
 ```
 
+## Docker image
+
+A docker image is [available](https://hub.docker.com/r/messagebird/gcppromd/).
+```
+docker run messagebird/gcppromd:0.1.0
+```
+
 ## API Reference
 
 | Endpoint                                                 | Description    |
@@ -19,14 +26,14 @@ Usage of gcppromd:
 
 ### GCE instance discovery
 
-The http request 
+The http request
 
 `GET /v1/gce/instances?projects=<project1,project2,...>`
 
 returns an array of prometheus's [`<static_config>`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config)s.
 
 The query parameter `projects` accepts a list of coma separated google cloud project names.
-The instances on those projects that have the GCE label `prometheus` (the value doesn't matter) are returned. 
+The instances on those projects that have the GCE label `prometheus` (the value doesn't matter) are returned.
 
 Every instance can have one or multiple metadata keys, *be careful that metadata are not labels*, of the form `prometheus_ports`
 or `prometheus_ports_<service name>` mapping to the port number that prometheus
@@ -56,11 +63,11 @@ These are useful for automatically discovering instances behind a load-balancer.
 
 To authenticate with the google cloud APIs you can use the [Application Default Credentials process](https://cloud.google.com/docs/authentication/production) or set specific credentials using the `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
 
-Thse credentials need to have the API scope `https://www.googleapis.com/auth/compute.readonly`. 
+Thse credentials need to have the API scope `https://www.googleapis.com/auth/compute.readonly`.
 
 ## Errors
 
-No errors are ever returned by the API. They are only logged. 
+No errors are ever returned by the API. They are only logged.
 
 ## FAQ
 ### In what this is different than [`gce_sd_configs`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#%3Cgce_sd_config%3E)?
