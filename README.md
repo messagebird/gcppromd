@@ -5,9 +5,18 @@ GCPPromd provides Google Compute Engine  auto-discovery for Prometheus.
 ## Configuration
 
 ```
-Usage of gcppromd:
+Usage of ./gcppromd:
+  -daemon
+        run the application as a daemon that periodically produses a targets file with a json in Prometheus file_sd format. Disables web-mode
+  -frequency int
+        discovery frequency in seconds (default 300)
   -listen string
-    	HTTP listen address (default ":8080")
+        HTTP listen address (default ":8080")
+  -outputPath string
+        A path to the outputfile with targets (default "/etc/prom_sd/targets.json")
+  -projects string
+        comma-separated projects IDs
+
 ```
 
 ## Docker image
@@ -26,6 +35,11 @@ docker run messagebird/gcppromd:0.1.0
 
 ### GCE instance discovery
 
+#### Daemon mode
+
+Outputs a JSON with Prometheus targets in projects (`-projects`) to a file set by `-outputPath`.
+ 
+#### Web-server mode
 The http request
 
 `GET /v1/gce/instances?projects=<project1,project2,...>`
@@ -33,6 +47,8 @@ The http request
 returns an array of prometheus's [`<static_config>`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config)s.
 
 The query parameter `projects` accepts a list of coma separated google cloud project names.
+
+### General Notes (true for both web-server and daemon mode)
 The instances on those projects that have the GCE label `prometheus` (the value doesn't matter) are returned.
 
 Every instance can have one or multiple metadata keys, *be careful that metadata are not labels*, of the form `prometheus_ports`
