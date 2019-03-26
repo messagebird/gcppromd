@@ -23,7 +23,7 @@ Usage of ./gcppromd:
 
 A docker image is [available](https://hub.docker.com/r/messagebird/gcppromd/).
 ```
-docker run messagebird/gcppromd:0.1.0
+docker run messagebird/gcppromd:0.2.0
 ```
 
 ## API Reference
@@ -38,7 +38,7 @@ docker run messagebird/gcppromd:0.1.0
 #### Daemon mode
 
 Outputs a JSON with Prometheus targets in projects (`-projects`) to a file set by `-outputPath`.
- 
+
 #### Web-server mode
 The http request
 
@@ -92,11 +92,11 @@ Built in support for GCE in prometheus requires you to manually declare all your
 
 ### How do I pass the discovered instances to prometheus?
 
-GCPPromd returns an array of `<static_config>`, you can automatically write that output to a file and use [`<file_sd_config>`]( https://prometheus.io/docs/prometheus/latest/configuration/configuration/#%3Cfile_sd_config%3E).  
+GCPPromd returns an array of `<static_config>`, you can automatically write that output to a file and use [`<file_sd_config>`]( https://prometheus.io/docs/prometheus/latest/configuration/configuration/#%3Cfile_sd_config%3E).
 Prometheus will reload the configuration automatically.
 
 ### I don't see any labels?
-All emitted labels are prefixed with  `__meta` you need to explicitly relabel to pick what you need.  
+All emitted labels are prefixed with  `__meta` you need to explicitly relabel to pick what you need.
 For example, assuming that the output of `GET /v1/gce/instances` is written in `/var/local/gcppromd/gcppromd_v1_gce_instances.json`:
 
 ```yaml
