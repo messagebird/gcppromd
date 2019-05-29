@@ -51,11 +51,11 @@ The query parameter `projects` accepts a list of coma separated google cloud pro
 ### General Notes (true for both web-server and daemon mode)
 The instances on those projects that have the GCE label `prometheus` (the value doesn't matter) are returned.
 
-Every instance can have one or multiple metadata keys, *be careful that metadata are not labels*, of the form `prometheus_ports`
+Every instance can have one or multiple metadata keys, *be careful metadata are not labels*, of the form `prometheus_ports`
 or `prometheus_ports_<service name>` mapping to the port number that prometheus
 should target.
 
-For every GCE label `prometheus_ports_*` a couple of targets and labels are emitted.
+For every GCE metadata like `prometheus_ports_*` a couple of Prometheus targets and Prometheus labels are emitted.
 
 An instance can also declare the metadata keys `prometheus_delegate_address` or
 `prometheus_delegate_address_<service name>` with
