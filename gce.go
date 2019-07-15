@@ -20,7 +20,7 @@ const (
 	promLabel                 = model.MetaLabelPrefix + "gce_"
 	promLabelProject          = promLabel + "project"
 	promLabelZone             = promLabel + "zone"
-  promLabelRegion           = promLabel + "region"
+	promLabelRegion           = promLabel + "region"
 	promLabelNetwork          = promLabel + "network"
 	promLabelSubnetwork       = promLabel + "subnetwork"
 	promLabelPublicIP         = promLabel + "public_ip"
