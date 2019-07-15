@@ -12,6 +12,7 @@ import (
 
 	pmodel "github.com/prometheus/common/model"
 	pstrutil "github.com/prometheus/prometheus/util/strutil"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -19,6 +20,7 @@ const (
 	promLabel                 = model.MetaLabelPrefix + "gce_"
 	promLabelProject          = promLabel + "project"
 	promLabelZone             = promLabel + "zone"
+  promLabelRegion           = promLabel + "region"
 	promLabelNetwork          = promLabel + "network"
 	promLabelSubnetwork       = promLabel + "subnetwork"
 	promLabelPublicIP         = promLabel + "public_ip"
@@ -76,7 +78,7 @@ func NewGCEDiscoveryPool(ctx context.Context, size int) (chan *GCEReqInstanceDis
 				case <-ctx.Done():
 					return
 				case req := <-reqs:
-					confs, err := gced.Instances(req.Project, req.Filter)
+					confs, err := gced.Instances(ctx, req.Project, req.Filter)
 					if err != nil {
 						req.Errors <- err
 					} else {
@@ -108,7 +110,7 @@ func NewGCEDiscovery() (*GCEDiscovery, error) {
 }
 
 // Instances returns a list of instances of a directory project.
-func (d *GCEDiscovery) Instances(project, filter string) ([]*PromConfig, error) {
+func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([]*PromConfig, error) {
 	configs := make([]*PromConfig, 0, 100)
 	ialReq := d.service.Instances.
 		AggregatedList(project).
@@ -123,8 +125,12 @@ func (d *GCEDiscovery) Instances(project, filter string) ([]*PromConfig, error) 
 	}
 
 	delagatedHosts := make(map[string]*delagatedHost)
+	regions, err := d.regions(ctx, project)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 
-	err := ialReq.Pages(context.Background(), func(ial *compute.InstanceAggregatedList) error {
+	err = ialReq.Pages(ctx, func(ial *compute.InstanceAggregatedList) error {
 		for _, zone := range ial.Items {
 			for _, inst := range zone.Instances {
 				if len(inst.NetworkInterfaces) <= 0 {
@@ -133,9 +139,15 @@ func (d *GCEDiscovery) Instances(project, filter string) ([]*PromConfig, error) 
 
 				priIface := inst.NetworkInterfaces[0]
 
+				region, err := extractRegionFromZone(inst.Zone, regions)
+				if err != nil {
+					return errors.Wrapf(err, "could not determine in which region instance %s is.", inst.Name)
+				}
+
 				labels := pmodel.LabelSet{
 					promLabelProject:        pmodel.LabelValue(project),
 					promLabelZone:           pmodel.LabelValue(inst.Zone),
+					promLabelRegion:         pmodel.LabelValue(region),
 					promLabelInstanceName:   pmodel.LabelValue(inst.Name),
 					promLabelInstanceStatus: pmodel.LabelValue(inst.Status),
 					promLabelNetwork:        pmodel.LabelValue(priIface.Network),
@@ -249,6 +261,23 @@ func (d *GCEDiscovery) Instances(project, filter string) ([]*PromConfig, error) 
 	return configs, err
 }
 
+func (d *GCEDiscovery) regions(ctx context.Context, project string) (map[string]string, error) {
+	m := make(map[string]string)
+
+	req := d.service.Regions.List(project)
+	err := req.Pages(context.Background(), func(list *compute.RegionList) error {
+		for _, r := range list.Items {
+			m[r.Name] = r.Name
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve/process list of GCP regions.")
+	}
+
+	return m, nil
+}
+
 func parsePorts(key, value, prefix string) (ports []int, name string, has bool) {
 	has = strings.HasPrefix(key, prefix)
 	if !has {
@@ -274,4 +303,15 @@ func parseNameFromKey(key, prefix string) (name string) {
 		name = strings.TrimRight(key[plen:], "_")
 	}
 	return
+}
+
+func extractRegionFromZone(zoneURL string, regions map[string]string) (string, error) {
+	urlSplit := strings.Split(zoneURL, "/")
+	zone := urlSplit[len(urlSplit) - 1]
+
+	if val, ok := regions[zone[:len(zone) - 2]]; ok {
+		return val, nil
+	}
+
+	return "", errors.New(fmt.Sprintf("could not find region for zone %s", zone))
 }

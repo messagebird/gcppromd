@@ -2,12 +2,15 @@
 cloud.google.com/go/compute/metadata
 # github.com/go-chi/chi v4.0.2+incompatible
 github.com/go-chi/chi
+github.com/go-chi/chi/middleware
 # github.com/go-chi/render v1.0.1
 github.com/go-chi/render
 # github.com/golang/protobuf v1.2.0
 github.com/golang/protobuf/proto
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
+# github.com/pkg/errors v0.8.1
+github.com/pkg/errors
 # github.com/prometheus/common v0.2.0
 github.com/prometheus/common/model
 # github.com/prometheus/prometheus v2.5.0+incompatible
