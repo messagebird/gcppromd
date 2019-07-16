@@ -170,7 +170,7 @@ func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([
 
 				// GCE metadata are key-value pairs for user supplied attributes.
 				if inst.Metadata != nil {
-					// keep track of the localy created label set.
+					// keep track of the locally created label set.
 					lTargetsLabels := make([]pmodel.LabelSet, 0)
 					// this loop do not populates the __meta_gce_metadata_...
 					// labels only generate the different targets.
