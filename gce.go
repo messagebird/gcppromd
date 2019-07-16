@@ -12,7 +12,6 @@ import (
 
 	pmodel "github.com/prometheus/common/model"
 	pstrutil "github.com/prometheus/prometheus/util/strutil"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -125,12 +124,8 @@ func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([
 	}
 
 	delagatedHosts := make(map[string]*delagatedHost)
-	regions, err := d.regions(ctx, project)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 
-	err = ialReq.Pages(ctx, func(ial *compute.InstanceAggregatedList) error {
+	err := ialReq.Pages(ctx, func(ial *compute.InstanceAggregatedList) error {
 		for _, zone := range ial.Items {
 			for _, inst := range zone.Instances {
 				if len(inst.NetworkInterfaces) <= 0 {
@@ -139,10 +134,7 @@ func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([
 
 				priIface := inst.NetworkInterfaces[0]
 
-				region, err := extractRegionFromZone(inst.Zone, regions)
-				if err != nil {
-					return errors.Wrapf(err, "could not determine in which region instance %s is.", inst.Name)
-				}
+				region := extractRegionFromZone(inst.Zone)
 
 				labels := pmodel.LabelSet{
 					promLabelProject:        pmodel.LabelValue(project),
@@ -261,23 +253,6 @@ func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([
 	return configs, err
 }
 
-func (d *GCEDiscovery) regions(ctx context.Context, project string) (map[string]string, error) {
-	m := make(map[string]string)
-
-	req := d.service.Regions.List(project)
-	err := req.Pages(context.Background(), func(list *compute.RegionList) error {
-		for _, r := range list.Items {
-			m[r.Name] = r.Name
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve/process list of GCP regions.")
-	}
-
-	return m, nil
-}
-
 func parsePorts(key, value, prefix string) (ports []int, name string, has bool) {
 	has = strings.HasPrefix(key, prefix)
 	if !has {
@@ -305,13 +280,9 @@ func parseNameFromKey(key, prefix string) (name string) {
 	return
 }
 
-func extractRegionFromZone(zoneURL string, regions map[string]string) (string, error) {
-	urlSplit := strings.Split(zoneURL, "/")
-	zone := urlSplit[len(urlSplit) - 1]
+func extractRegionFromZone(zoneURL string) string {
+	lastIndex := strings.LastIndex(zoneURL, "/")
+	zone := zoneURL[lastIndex+1:]
 
-	if val, ok := regions[zone[:len(zone) - 2]]; ok {
-		return val, nil
-	}
-
-	return "", errors.New(fmt.Sprintf("could not find region for zone %s", zone))
+	return zone[:len(zone)-2]
 }
