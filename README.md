@@ -72,6 +72,7 @@ These are useful for automatically discovering instances behind a load-balancer.
 - `__meta_gce_subnetwork`: the subnetwork URL of the instance
 - `__meta_gce_tags`: comma separated list of instance tags
 - `__meta_gce_zone`: the GCE zone URL in which the instance is running
+- `__meta_gce_region`: the GCE region name in which the instance is running
 - `__meta_gce_delagate_for_`: URLs of the instance delegate.
 - `__meta_gce_name`: the extracted name from the `prometheus_port_*` GCE label, an empty string if the label is exactly `prometheus_port`
 
