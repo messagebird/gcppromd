@@ -19,6 +19,7 @@ const (
 	promLabel                 = model.MetaLabelPrefix + "gce_"
 	promLabelProject          = promLabel + "project"
 	promLabelZone             = promLabel + "zone"
+	promLabelRegion           = promLabel + "region"
 	promLabelNetwork          = promLabel + "network"
 	promLabelSubnetwork       = promLabel + "subnetwork"
 	promLabelPublicIP         = promLabel + "public_ip"
@@ -76,7 +77,7 @@ func NewGCEDiscoveryPool(ctx context.Context, size int) (chan *GCEReqInstanceDis
 				case <-ctx.Done():
 					return
 				case req := <-reqs:
-					confs, err := gced.Instances(req.Project, req.Filter)
+					confs, err := gced.Instances(ctx, req.Project, req.Filter)
 					if err != nil {
 						req.Errors <- err
 					} else {
@@ -108,7 +109,7 @@ func NewGCEDiscovery() (*GCEDiscovery, error) {
 }
 
 // Instances returns a list of instances of a directory project.
-func (d *GCEDiscovery) Instances(project, filter string) ([]*PromConfig, error) {
+func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([]*PromConfig, error) {
 	configs := make([]*PromConfig, 0, 100)
 	ialReq := d.service.Instances.
 		AggregatedList(project).
@@ -124,7 +125,7 @@ func (d *GCEDiscovery) Instances(project, filter string) ([]*PromConfig, error) 
 
 	delagatedHosts := make(map[string]*delagatedHost)
 
-	err := ialReq.Pages(context.Background(), func(ial *compute.InstanceAggregatedList) error {
+	err := ialReq.Pages(ctx, func(ial *compute.InstanceAggregatedList) error {
 		for _, zone := range ial.Items {
 			for _, inst := range zone.Instances {
 				if len(inst.NetworkInterfaces) <= 0 {
@@ -133,9 +134,12 @@ func (d *GCEDiscovery) Instances(project, filter string) ([]*PromConfig, error) 
 
 				priIface := inst.NetworkInterfaces[0]
 
+				region := extractRegionFromZone(inst.Zone)
+
 				labels := pmodel.LabelSet{
 					promLabelProject:        pmodel.LabelValue(project),
 					promLabelZone:           pmodel.LabelValue(inst.Zone),
+					promLabelRegion:         pmodel.LabelValue(region),
 					promLabelInstanceName:   pmodel.LabelValue(inst.Name),
 					promLabelInstanceStatus: pmodel.LabelValue(inst.Status),
 					promLabelNetwork:        pmodel.LabelValue(priIface.Network),
@@ -166,7 +170,7 @@ func (d *GCEDiscovery) Instances(project, filter string) ([]*PromConfig, error) 
 
 				// GCE metadata are key-value pairs for user supplied attributes.
 				if inst.Metadata != nil {
-					// keep track of the localy created label set.
+					// keep track of the locally created label set.
 					lTargetsLabels := make([]pmodel.LabelSet, 0)
 					// this loop do not populates the __meta_gce_metadata_...
 					// labels only generate the different targets.
@@ -274,4 +278,11 @@ func parseNameFromKey(key, prefix string) (name string) {
 		name = strings.TrimRight(key[plen:], "_")
 	}
 	return
+}
+
+func extractRegionFromZone(zoneURL string) string {
+	lastIndex := strings.LastIndex(zoneURL, "/")
+	zone := zoneURL[lastIndex+1:]
+
+	return zone[:len(zone)-2]
 }

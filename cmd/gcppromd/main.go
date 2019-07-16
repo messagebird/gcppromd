@@ -8,13 +8,14 @@ import (
 
 	"github.com/messagebird/gcppromd"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/render"
-	log "github.com/sirupsen/logrus"
-	"time"
 	"bytes"
 	"encoding/json"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/render"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"time"
 )
 
 type ctxKey int
@@ -123,6 +124,7 @@ func runDaemon(gceds chan *gcppromd.GCEReqInstanceDiscovery, output string, freq
 func runWebServer(gceds chan *gcppromd.GCEReqInstanceDiscovery, listenAddr *string) {
 	r := chi.NewRouter()
 
+	r.Use(middleware.Logger)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
