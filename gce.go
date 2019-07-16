@@ -45,7 +45,8 @@ const (
 
 // GCEReqInstanceDiscovery work unit for a pool of GCEDiscovery workers
 type GCEReqInstanceDiscovery struct {
-	Project           string
+	Project string
+	// Filter passed to the GCE API when looking up instances, see https://cloud.google.com/compute/docs/reference/rest/v1/acceleratorTypes/aggregatedList#body.QUERY_PARAMETERS.filter
 	Filter            string
 	PrometheusConfigs chan []*PromConfig
 	Errors            chan error
@@ -76,7 +77,10 @@ func NewGCEDiscoveryPool(ctx context.Context, size int) (chan *GCEReqInstanceDis
 				select {
 				case <-ctx.Done():
 					return
-				case req := <-reqs:
+				case req, ok := <-reqs:
+					if !ok {
+						return
+					}
 					confs, err := gced.Instances(ctx, req.Project, req.Filter)
 					if err != nil {
 						req.Errors <- err
@@ -118,7 +122,10 @@ func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([
 			"items/*/instances(id,status,zone,name,tags,labels,networkInterfaces,selfLink,metadata)",
 		)
 
-	filter = strings.Trim(promPresenceFilter+" ", " ")
+	filter = strings.TrimSpace(promPresenceFilter+" AND" + filter)
+	if filter[len(filter)-3:] == "AND" {
+		filter = filter[:len(filter)-3]
+	}
 	if filter != "" {
 		ialReq = ialReq.Filter(filter)
 	}

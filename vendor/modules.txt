@@ -1,10 +1,5 @@
 # cloud.google.com/go v0.34.0
 cloud.google.com/go/compute/metadata
-# github.com/go-chi/chi v4.0.2+incompatible
-github.com/go-chi/chi
-github.com/go-chi/chi/middleware
-# github.com/go-chi/render v1.0.1
-github.com/go-chi/render
 # github.com/golang/protobuf v1.2.0
 github.com/golang/protobuf/proto
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
@@ -15,9 +10,9 @@ github.com/prometheus/common/model
 github.com/prometheus/prometheus/util/strutil
 # github.com/sirupsen/logrus v1.4.0
 github.com/sirupsen/logrus
-# golang.org/x/crypto v0.0.0-20180904163835-0709b304e793
+# golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20190108225652-1e06a53dbb7e
+# golang.org/x/net v0.0.0-20190628185345-da137c7871d7
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/context
 # golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
@@ -26,7 +21,7 @@ golang.org/x/oauth2
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20181116152217-5ac8a444bdc5
+# golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # google.golang.org/api v0.1.0
