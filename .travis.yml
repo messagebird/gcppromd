@@ -5,6 +5,10 @@ go:
   - 1.12.x
   - tip
 
+matrix:
+  allow_failures:
+    - go: tip
+
 env:
   - GO111MODULE=on
 
