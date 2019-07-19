@@ -1,0 +1,22 @@
+language: go
+
+go:
+  - 1.11.x
+  - 1.12.x
+  - tip
+
+matrix:
+  allow_failures:
+    - go: tip
+
+env:
+  - GO111MODULE=on
+
+install: true
+
+before_script:
+  - go install github.com/golangci/golangci-lint/cmd/golangci-lint
+
+script:
+  - golangci-lint run
+  - go build -mod vendor ./cmd/gcppromd

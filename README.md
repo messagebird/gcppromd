@@ -23,7 +23,7 @@ Usage of ./gcppromd:
 
 A docker image is [available](https://hub.docker.com/r/messagebird/gcppromd/).
 ```
-docker run messagebird/gcppromd:0.2.0
+docker run messagebird/gcppromd:latest
 ```
 
 ## API Reference
@@ -122,3 +122,5 @@ For example, assuming that the output of `GET /v1/gce/instances` is written in `
       target_label: 'my_label_name'
       replacement: '$1'
 ```
+
+
