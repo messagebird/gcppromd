@@ -1,42 +1,40 @@
 # cloud.google.com/go v0.34.0
 cloud.google.com/go/compute/metadata
-# github.com/golang/protobuf v1.2.0
+# github.com/golang/protobuf v1.3.2
 github.com/golang/protobuf/proto
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/prometheus/common v0.2.0
+# github.com/prometheus/common v0.4.0
 github.com/prometheus/common/model
 # github.com/prometheus/prometheus v2.5.0+incompatible
 github.com/prometheus/prometheus/util/strutil
-# github.com/sirupsen/logrus v1.4.0
+# github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
-# golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
-golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20190628185345-da137c7871d7
-golang.org/x/net/context/ctxhttp
+# golang.org/x/net v0.0.0-20190923162816-aa69164e4478
 golang.org/x/net/context
+golang.org/x/net/context/ctxhttp
 # golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
-golang.org/x/oauth2/google
 golang.org/x/oauth2
+golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20190712062909-fae7ac547cb7
+# golang.org/x/sys v0.0.0-20190922100055-0a153f010e69
 golang.org/x/sys/unix
-golang.org/x/sys/windows
 # google.golang.org/api v0.1.0
+google.golang.org/api/cloudresourcemanager/v1
 google.golang.org/api/compute/v1
 google.golang.org/api/gensupport
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/internal/uritemplates
 # google.golang.org/appengine v1.4.0
 google.golang.org/appengine
-google.golang.org/appengine/urlfetch
 google.golang.org/appengine/internal
 google.golang.org/appengine/internal/app_identity
-google.golang.org/appengine/internal/modules
-google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/internal/base
 google.golang.org/appengine/internal/datastore
 google.golang.org/appengine/internal/log
+google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
+google.golang.org/appengine/internal/urlfetch
+google.golang.org/appengine/urlfetch
