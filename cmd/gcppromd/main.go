@@ -26,7 +26,7 @@ var (
 	fdaemon    = flag.Bool("daemon", false, "run the application as a daemon that periodically produces a target file with a json in Prometheus file_sd format. Disables web-mode")
 	fouput     = flag.String("outputPath", "/etc/prom_sd/targets.json", "A path to the output file with targets")
 	fdiscovery = flag.Int64("frequency", 300, "discovery frequency in seconds")
-	fprojects  = flag.String("projects", "", "comma-separated projects IDs")
+	fprojects  = flag.String("projects", "", "comma-separated projects IDs. (default: auto discovery)")
 	fworkers   = flag.Int("workers", 20, "number of workers to perform the discovery")
 )
 
@@ -69,19 +69,13 @@ func main() {
 	if *fdaemon {
 		log.Printf("Running as a daemon, output is going to be written to %s", *fouput)
 		log.Printf("Targets update frequency: %v seconds", *fdiscovery)
-		projects := parseProjects(*fprojects)
-		if len(projects) == 0 {
-			log.Warnf("Empty '-projects=%s' flag in daemon mode", *fprojects)
-		}
-
-		runDaemon(ctx, gceds, *fouput, time.Second*time.Duration(*fdiscovery), projects)
+		runDaemon(ctx, gceds, *fouput, time.Second*time.Duration(*fdiscovery), fprojects)
 	} else {
 		log.Printf("Running as a web-server")
+		runWebServer(ctx, gceds, &httpSrv)
 		if *fprojects != "" {
 			log.Warnf("Ignored '-projects=%s' flag in web-server mode", *fprojects)
 		}
-
-		runWebServer(ctx, gceds, &httpSrv)
 	}
 	<-idleConnsClosed
 }
@@ -136,15 +130,32 @@ func collectTargets(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDisc
 	return configs, true
 }
 
-func runDaemon(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDiscovery, output string, frequency time.Duration, projects []string) {
+func runDaemon(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDiscovery, output string, frequency time.Duration, fprojects *string) {
 	ticker := time.NewTicker(frequency)
 	defer ticker.Stop()
+
+	var projects []string
+
+	if *fprojects != "" {
+		projects = parseProjects(*fprojects)
+		if len(projects) == 0 {
+			log.Warnf("Empty '-projects=%s' flag in daemon mode", *fprojects)
+		}
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			if *fprojects == "" {
+				var err error
+				projects, err = gcppromd.Projects()
+				if err != nil {
+					log.WithError(err).Error("Can't list projects")
+					continue
+				}
+			}
 			configs, ok := collectTargets(ctx, gceds, projects)
 			if !ok {
 				log.Info("invalid targets collection, skipping")
@@ -235,8 +246,17 @@ func (h *handle) instancesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var err error
+
 	// extracts a set of project names
 	projects := parseProjects(r.URL.Query().Get("projects"))
+	if len(projects) == 0 {
+		projects, err = gcppromd.Projects()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 
 	configs, _ := collectTargets(context.Background(), h.GCEDiscoveryWorkers, projects)
 
@@ -250,7 +270,7 @@ func (h *handle) instancesHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write(buf.Bytes())
+	_, err = w.Write(buf.Bytes())
 	if err != nil {
 		log.WithError(err).Error("unexpected error while witting response")
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/common/model"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/cloudresourcemanager/v1"
 
 	pmodel "github.com/prometheus/common/model"
 	pstrutil "github.com/prometheus/prometheus/util/strutil"
@@ -110,6 +111,31 @@ func NewGCEDiscovery() (*GCEDiscovery, error) {
 	d := GCEDiscovery{service: service}
 
 	return &d, nil
+}
+
+func Projects() (projects []string, err error) {
+	ctx := context.Background()
+	cl, err := google.DefaultClient(ctx, cloudresourcemanager.CloudPlatformReadOnlyScope)
+	if err != nil {
+		return nil, err
+	}
+
+	service, err := cloudresourcemanager.New(cl)
+	if err != nil {
+		return nil, err
+	}
+
+	req := service.Projects.List()
+	if err := req.Pages(ctx, func(page *cloudresourcemanager.ListProjectsResponse) error {
+		for _, project := range page.Projects {
+			projects = append(projects, project.ProjectId)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return
 }
 
 // Instances returns a list of instances of a directory project.

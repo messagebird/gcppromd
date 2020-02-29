@@ -1,6 +1,6 @@
 # gcppromd
 
-GCPPromd provides Google Compute Engine  auto-discovery for Prometheus.
+GCPPromd provides Google Compute Engine auto-discovery for Prometheus.
 
 ## Configuration
 
@@ -15,7 +15,7 @@ Usage of ./gcppromd:
   -outputPath string
         A path to the outputfile with targets (default "/etc/prom_sd/targets.json")
   -projects string
-        comma-separated projects IDs
+        comma-separated projects IDs (default: auto discovery)
 
 ```
 
