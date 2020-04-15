@@ -6,35 +6,39 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 
 	"github.com/messagebird/gcppromd"
 
 	"bytes"
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
-	projectSeparator   = ","
+	projectSeparator = ","
 )
 
 var (
-	flisten    = flag.String("listen", ":8080", "HTTP listen address")
-	fdaemon    = flag.Bool("daemon", false, "run the application as a daemon that periodically produces a target file with a json in Prometheus file_sd format. Disables web-mode")
-	fouput     = flag.String("outputPath", "/etc/prom_sd/targets.json", "A path to the output file with targets")
-	fdiscovery = flag.Int64("frequency", 300, "discovery frequency in seconds")
-	fprojects  = flag.String("projects", "", "comma-separated projects IDs. (default: auto discovery)")
-	fworkers   = flag.Int("workers", 20, "number of workers to perform the discovery")
+	flisten           = flag.String("listen", ":8080", "HTTP listen address")
+	fdaemon           = flag.Bool("daemon", false, "run the application as a daemon that periodically produces a target file with a json in Prometheus file_sd format. Disables web-mode")
+	fouput            = flag.String("outputPath", "/etc/prom_sd/targets.json", "(daemon only)  A path to the output file with targets")
+	fdiscovery        = flag.Int64("frequency", 300, "(daemon only)  discovery frequency in seconds")
+	fprojects         = flag.String("projects", "", "(daemon only)  comma-separated projects IDs.")
+	fprojectsauto     = flag.Bool("projects-auto-discovery", false, "(daemon only)  enable auto-discovery of the projects based on which projects can be listed by the provided credentials.")
+	fprojectsexcludes = flag.String("projects-excludes", "", "(daemon only) RE2 regex, all projects matching it will not be discovered")
+	fworkers          = flag.Int("workers", 20, "number of workers to perform the discovery")
 )
 
 func main() {
 	flag.Parse()
 
 	idleConnsClosed := make(chan struct{})
-	httpSrv := http.Server{Addr:  *flisten, Handler: requestLogger(http.DefaultServeMux)}
+	httpSrv := http.Server{Addr: *flisten, Handler: requestLogger(http.DefaultServeMux)}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ctxPool, cancelPool := context.WithCancel(context.Background())
@@ -50,7 +54,7 @@ func main() {
 		log.Info("Received interrupt, shutting down")
 
 		if !*fdaemon {
-			ctx, cancel := context.WithTimeout(context.Background(), 60 * time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 			if err := httpSrv.Shutdown(ctx); err != nil {
 				// Error from closing listeners, or context timeout:
@@ -59,43 +63,113 @@ func main() {
 		}
 	}()
 
-
 	gceds, err := gcppromd.NewGCEDiscoveryPool(ctxPool, *fworkers)
-
 	if err != nil {
 		log.WithError(err).Fatal("Cannot initialise GCE discovery")
 	}
 
+	gcpds, err := gcppromd.NewGCPProjectDiscovery()
+	if *fprojectsauto && err != nil {
+		log.WithError(err).Fatal("Cannot initialise GCP discovery")
+	}
+
 	if *fdaemon {
+		var pexcludes *regexp.Regexp
+		if *fprojectsexcludes != "" {
+			pexcludes, err = regexp.Compile(*fprojectsexcludes)
+			if err != nil {
+				log.WithError(err).Fatal("Invalid project exclude pattern")
+			}
+		}
+
 		log.Printf("Running as a daemon, output is going to be written to %s", *fouput)
 		log.Printf("Targets update frequency: %v seconds", *fdiscovery)
-		runDaemon(ctx, gceds, *fouput, time.Second*time.Duration(*fdiscovery), fprojects)
+		log.Printf("Projects Auto-Discovery: %t", *fprojectsauto)
+		projects := parseProjectsSet(*fprojects)
+		if len(projects) == 0 && !*fprojectsauto {
+			log.Warnf("Empty '-projects=%s' flag in daemon mode", *fprojects)
+		}
+		log.Printf("Targets projects: %v", projectsSetList(projects))
+		log.Printf("Projects exclude pattern: %s", pexcludes.String())
+
+		runDaemon(ctx, gceds, gcpds, DaemonConfig{
+			Output:                 *fouput,
+			Frequency:              time.Second * time.Duration(*fdiscovery),
+			Projects:               projects,
+			ProjectsExcludePattern: pexcludes,
+			ProjectsAutoDiscovery:  *fprojectsauto,
+		})
 	} else {
 		log.Printf("Running as a web-server")
-		runWebServer(ctx, gceds, &httpSrv)
 		if *fprojects != "" {
 			log.Warnf("Ignored '-projects=%s' flag in web-server mode", *fprojects)
 		}
+		if *fprojectsauto == true {
+			log.Warnf("Ignored '-projects-auto-discovery=true' flag in web-server mode")
+		}
+		if *fprojectsexcludes != "" {
+			log.Warnf("Ignored '-projects-excludes=%s' flag in web-server mode", *fprojectsexcludes)
+		}
+		runWebServer(ctx, gceds, gcpds, &httpSrv)
 	}
 	<-idleConnsClosed
 }
 
+type ProjectsSet map[string]interface{}
+
 // parseProjects parse and de-duplicate a raw projects string project-1,project-b
-func parseProjects(raw string) (projects []string) {
-	seen := map[string]int{}
+func parseProjectsSet(raw string) (projects ProjectsSet) {
+	projects = map[string]interface{}{}
 	for _, project := range strings.Split(raw, projectSeparator) {
 		if project == "" {
 			continue
 		}
-		seen[project]++
-		if seen[project] <= 1 {
-			projects = append(projects, project)
+		if _, has := projects[project]; !has {
+			projects[project] = 1
 		}
 	}
 	return
 }
 
+func projectsSetAdd(projects ProjectsSet, toAdd []string) ProjectsSet {
+	for _, p := range toAdd {
+		if p == "" {
+			continue
+		}
+		if _, has := projects[p]; !has {
+			projects[p] = 1
+		}
+	}
+	return projects
+}
+
+func projectsSetList(set ProjectsSet) (out []string) {
+	out = make([]string, 0, len(set))
+	for p := range set {
+		out = append(out, p)
+	}
+	return
+}
+
+// projectSetExclude excludes all projects matching the given pattern
+func projectsSetExclude(projects ProjectsSet, pattern *regexp.Regexp) ProjectsSet {
+	if pattern == nil {
+		return projects
+	}
+	out := make(map[string]interface{}, len(projects))
+	for project := range projects {
+		if !pattern.MatchString(project) {
+			out[project] = 1
+		}
+	}
+	return out
+}
+
 func collectTargets(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDiscovery, projects []string) ([]*gcppromd.PromConfig, bool) {
+	if len(projects) == 0 {
+		return []*gcppromd.PromConfig{}, true
+	}
+
 	cerrors := make(chan error)
 	defer close(cerrors)
 	cconfigs := make(chan []*gcppromd.PromConfig)
@@ -130,33 +204,43 @@ func collectTargets(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDisc
 	return configs, true
 }
 
-func runDaemon(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDiscovery, output string, frequency time.Duration, fprojects *string) {
-	ticker := time.NewTicker(frequency)
-	defer ticker.Stop()
+// DaemonConfig configuration for the daemon
+type DaemonConfig struct {
+	Output                 string
+	Frequency              time.Duration
+	Projects               ProjectsSet
+	ProjectsExcludePattern *regexp.Regexp
+	ProjectsAutoDiscovery  bool
+}
 
-	var projects []string
+func runDaemon(
+	ctx context.Context,
+	gceds chan *gcppromd.GCEReqInstanceDiscovery,
+	gcpds *gcppromd.GCPProjectDiscovery,
+	cfg DaemonConfig,
+) {
+	timer := time.NewTimer(1 * time.Nanosecond)
+	defer timer.Stop()
 
-	if *fprojects != "" {
-		projects = parseProjects(*fprojects)
-		if len(projects) == 0 {
-			log.Warnf("Empty '-projects=%s' flag in daemon mode", *fprojects)
-		}
-	}
-
+	projectsSet := projectsSetExclude(cfg.Projects, cfg.ProjectsExcludePattern)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			if *fprojects == "" {
-				var err error
-				projects, err = gcppromd.Projects()
+		case <-timer.C:
+			timer.Reset(cfg.Frequency)
+
+			discoveryStarted := time.Now()
+			if cfg.ProjectsAutoDiscovery {
+				discovered, err := gcpds.Projects(ctx)
 				if err != nil {
-					log.WithError(err).Error("Can't list projects")
-					continue
+					log.WithError(err).Error("can't auto-discover projects")
+				} else {
+					projectsSet = projectsSetExclude(projectsSetAdd(projectsSet, discovered), cfg.ProjectsExcludePattern)
 				}
 			}
-			configs, ok := collectTargets(ctx, gceds, projects)
+
+			configs, ok := collectTargets(ctx, gceds, projectsSetList(projectsSet))
 			if !ok {
 				log.Info("invalid targets collection, skipping")
 				continue
@@ -165,13 +249,13 @@ func runDaemon(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDiscovery
 			// write to a temporary file then swap it to ensure that the output file doesn't get corrupted or an half backed version is read.
 			f, err := ioutil.TempFile(os.TempDir(), "")
 			if err != nil {
-				log.WithError(err).Error("Can't open temporary file")
+				log.WithError(err).Error("can't open temporary file")
 				continue
 			}
 
 			enc := json.NewEncoder(f)
 			if err := enc.Encode(configs); err != nil {
-				log.WithError(err).Error("Can't encode prometheus targets configuration to json")
+				log.WithError(err).Error("can't encode prometheus targets configuration to json")
 				continue
 			}
 
@@ -184,21 +268,22 @@ func runDaemon(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDiscovery
 				err = permErr
 			}
 			if err == nil {
-				err = os.Rename(f.Name(), output)
+				err = os.Rename(f.Name(), cfg.Output)
 			}
 			if err != nil {
-				log.WithError(err).WithField("file", output).Error("Could not write output file")
+				log.WithError(err).WithField("file", cfg.Output).Error("could not write output file")
 				os.Remove(f.Name())
 				continue
 			}
 
-			log.Infof("Target list updated")
+			log.Infof("target list updated, took %v", time.Since(discoveryStarted))
 		}
 	}
 }
 
 type handle struct {
 	GCEDiscoveryWorkers chan *gcppromd.GCEReqInstanceDiscovery
+	GCPProjectDiscovery *gcppromd.GCPProjectDiscovery
 }
 
 func requestLogger(handler http.Handler) http.Handler {
@@ -216,8 +301,8 @@ func requestLogger(handler http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func runWebServer(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDiscovery, srv *http.Server) {
-	h := handle{gceds}
+func runWebServer(ctx context.Context, gceds chan *gcppromd.GCEReqInstanceDiscovery, gcpds *gcppromd.GCPProjectDiscovery, srv *http.Server) {
+	h := handle{gceds, gcpds}
 
 	http.HandleFunc("/status", h.statusHandler)
 	http.HandleFunc("/v1/gce/instances", h.instancesHandler)
@@ -249,16 +334,31 @@ func (h *handle) instancesHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	// extracts a set of project names
-	projects := parseProjects(r.URL.Query().Get("projects"))
-	if len(projects) == 0 {
-		projects, err = gcppromd.Projects()
+	projectsSet := parseProjectsSet(r.URL.Query().Get("projects"))
+	projectsExclude := r.URL.Query().Get("projects-excludes")
+	projectsAutoDiscoveryValue := strings.ToLower(r.URL.Query().Get("projects-auto-discovery"))
+	projectsAutoDiscovery := projectsAutoDiscoveryValue == "true" || projectsAutoDiscoveryValue == "1"
+
+	var pexcludes *regexp.Regexp
+	if projectsExclude != "" {
+		pexcludes, err = regexp.Compile(projectsExclude)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 
-	configs, _ := collectTargets(context.Background(), h.GCEDiscoveryWorkers, projects)
+	if projectsAutoDiscovery {
+		discovered, err := h.GCPProjectDiscovery.Projects(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		projectsSet = projectsSetAdd(projectsSet, discovered)
+	}
+	projectsSet = projectsSetExclude(projectsSet, pexcludes)
+
+	configs, _ := collectTargets(r.Context(), h.GCEDiscoveryWorkers, projectsSetList(projectsSet))
 
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
