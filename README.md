@@ -54,8 +54,8 @@ returns an array of prometheus's [`<static_config>`](https://prometheus.io/docs/
 
 The query parameters are:
 - `projects` accepts a list of coma separated google cloud project names.
-- `projects-auto-discovery` accepts `true`, `1`, `TRUE`, other values are evaluated to false, add all accessible project by GCPPromd to the projects list. 
-- `projects-exclude` accepts a list of coma separated google cloud project names, those will be excluded from the list of projects. 
+- `projects-auto-discovery` accepts `true`, `1`, `TRUE`, other values are evaluated to false, add all accessible projects by GCPPromd to the projects list. 
+- `projects-exclude` a RE2 regex, all projects matching it will not be discovered.
 
 ### General Notes (true for both web-server and daemon mode)
 A "projects auto-discovery" mode can be enabled with `-project-auto-discovery` or `http://..?project-auto-discovery=true`.
