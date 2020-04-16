@@ -1,21 +1,27 @@
 # gcppromd
 
-GCPPromd provides Google Compute Engine  auto-discovery for Prometheus.
+GCPPromd provides Google Compute Engine auto-discovery for Prometheus.
 
 ## Configuration
 
 ```
-Usage of ./gcppromd:
+Usage of gcppromd:
   -daemon
-        run the application as a daemon that periodically produses a targets file with a json in Prometheus file_sd format. Disables web-mode
+    	run the application as a daemon that periodically produces a target file with a json in Prometheus file_sd format. Disables web-mode
   -frequency int
-        discovery frequency in seconds (default 300)
+    	(daemon only)  discovery frequency in seconds (default 300)
   -listen string
-        HTTP listen address (default ":8080")
+    	HTTP listen address (default ":8080")
   -outputPath string
-        A path to the outputfile with targets (default "/etc/prom_sd/targets.json")
+    	(daemon only)  A path to the output file with targets (default "/etc/prom_sd/targets.json")
   -projects string
-        comma-separated projects IDs
+    	(daemon only)  comma-separated projects IDs.
+  -projects-auto-discovery
+    	(daemon only)  enable auto-discovery of the projects based on which projects can be listed by the provided credentials.
+  -projects-excludes string
+    	(daemon only) RE2 regex, all projects matching it will not be discovered
+  -workers int
+    	number of workers to perform the discovery (default 20)
 
 ```
 
@@ -28,10 +34,10 @@ docker run messagebird/gcppromd:latest
 
 ## API Reference
 
-| Endpoint                                                 | Description    |
-| -------------------------------------------------------- | -------------- |
-| `GET /status`                                            | Health check   |
-| `GET /v1/gce/instances?projects=<project1,project2,...>` | List instances |
+| Endpoint                | Description    |
+| ----------------------- | -------------- |
+| `GET /status`           | Health check   |
+| `GET /v1/gce/instances` | List instances |
 
 ### GCE instance discovery
 
@@ -46,9 +52,17 @@ The http request
 
 returns an array of prometheus's [`<static_config>`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config)s.
 
-The query parameter `projects` accepts a list of coma separated google cloud project names.
+The query parameters are:
+- `projects` accepts a list of coma separated google cloud project names.
+- `projects-auto-discovery` accepts `true`, `1`, `TRUE`, other values are evaluated to false, add all accessible project by GCPPromd to the projects list. 
+- `projects-exclude` accepts a list of coma separated google cloud project names, those will be excluded from the list of projects. 
 
 ### General Notes (true for both web-server and daemon mode)
+A "projects auto-discovery" mode can be enabled with `-project-auto-discovery` or `http://..?project-auto-discovery=true`.
+In that mode all the accessible projects will be scraped. You can exclude projects using `-project-excludes=regex` or `http://..?project-excludes=regex`.
+
+**Using the projects auto-discovery add 500ms-1s of overhead to requests/daemon refreshes**
+
 The instances on those projects that have the GCE label `prometheus` (the value doesn't matter) are returned.
 
 Every instance can have one or multiple metadata keys, *be careful metadata are not labels*, of the form `prometheus_ports`

@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/compute/v1"
 
 	pmodel "github.com/prometheus/common/model"
@@ -112,6 +113,42 @@ func NewGCEDiscovery() (*GCEDiscovery, error) {
 	return &d, nil
 }
 
+type GCPProjectDiscovery struct {
+	service *cloudresourcemanager.Service
+}
+
+func NewGCPProjectDiscovery() (*GCPProjectDiscovery, error) {
+	ctx := context.Background()
+	cl, err := google.DefaultClient(ctx, cloudresourcemanager.CloudPlatformReadOnlyScope)
+	if err != nil {
+		return nil, err
+	}
+
+	service, err := cloudresourcemanager.New(cl)
+	if err != nil {
+		return nil, err
+	}
+
+	d := GCPProjectDiscovery{service: service}
+
+	return &d, nil
+}
+
+// DiscoverProjects discovers accessible projects in GCP
+func (d *GCPProjectDiscovery) Projects(ctx context.Context) (projects []string, err error) {
+	req := d.service.Projects.List()
+	if err := req.Pages(ctx, func(page *cloudresourcemanager.ListProjectsResponse) error {
+		for _, project := range page.Projects {
+			projects = append(projects, project.ProjectId)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return
+}
+
 // Instances returns a list of instances of a directory project.
 func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([]*PromConfig, error) {
 	configs := make([]*PromConfig, 0, 100)
@@ -122,7 +159,7 @@ func (d *GCEDiscovery) Instances(ctx context.Context, project, filter string) ([
 			"items/*/instances(id,status,zone,name,tags,labels,networkInterfaces,selfLink,metadata)",
 		)
 
-	filter = strings.TrimSpace(promPresenceFilter+" AND" + filter)
+	filter = strings.TrimSpace(promPresenceFilter + " AND" + filter)
 	if filter[len(filter)-3:] == "AND" {
 		filter = filter[:len(filter)-3]
 	}
