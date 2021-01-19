@@ -58,7 +58,7 @@ The query parameters are:
 - `projects-exclude` a RE2 regex, all projects matching it will not be discovered.
 
 ### General Notes (true for both web-server and daemon mode)
-A "projects auto-discovery" mode can be enabled with `-project-auto-discovery` or `http://..?project-auto-discovery=true`.
+A "projects auto-discovery" mode can be enabled with `-projects-auto-discovery` or `http://..?projects-auto-discovery=true`.
 In that mode all the accessible projects will be scraped. You can exclude projects using `-project-excludes=regex` or `http://..?project-excludes=regex`.
 
 **Using the projects auto-discovery add 500ms-1s of overhead to requests/daemon refreshes**
