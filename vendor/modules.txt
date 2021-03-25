@@ -1,27 +1,37 @@
 # cloud.google.com/go v0.34.0
 cloud.google.com/go/compute/metadata
 # github.com/golang/protobuf v1.3.2
+## explicit
 github.com/golang/protobuf/proto
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/prometheus/common v0.4.0
+## explicit
 github.com/prometheus/common/model
 # github.com/prometheus/prometheus v2.5.0+incompatible
+## explicit
 github.com/prometheus/prometheus/util/strutil
 # github.com/sirupsen/logrus v1.4.2
+## explicit
 github.com/sirupsen/logrus
+# github.com/stretchr/testify v1.4.0
+## explicit
 # golang.org/x/net v0.0.0-20190923162816-aa69164e4478
+## explicit
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 # golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
+## explicit
 golang.org/x/oauth2
 golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
 # golang.org/x/sys v0.0.0-20190922100055-0a153f010e69
+## explicit
 golang.org/x/sys/unix
 # google.golang.org/api v0.1.0
+## explicit
 google.golang.org/api/cloudresourcemanager/v1
 google.golang.org/api/compute/v1
 google.golang.org/api/gensupport
@@ -38,3 +48,5 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
+# gopkg.in/yaml.v2 v2.2.7
+## explicit
