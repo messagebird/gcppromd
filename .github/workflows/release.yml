@@ -1,0 +1,56 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  get-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: vars
+        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+  build:
+    needs: [get-tag]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - {goos: darwin, goarch: amd64}
+          - {goos: linux, goarch: amd64}
+          - {goos: windows, goarch: amd64}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ^1.0
+      - run: CGO_ENABLED=0 GOOS=${{ matrix.platform.goos }} GOARCH=${{ matrix.platform.goarch }} go build -ldflags "-s -w" -o gcppromd-${{ needs.get-tag.outputs.tag }}.${{ matrix.platform.goos }}-${{ matrix.platform.goarch }} ./cmd/gcppromd
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: binary.${{ matrix.platform.goos }}-${{ matrix.platform.goarch }}
+          path: gcppromd-${{ needs.get-tag.outputs.tag }}.${{ matrix.platform.goos }}-${{ matrix.platform.goarch }}
+          if-no-files-found: error
+  release:
+    needs: [get-tag, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        with:
+          path: .
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          body_path: CHANGELOGS/${{ needs.get-tag.outputs.tag }}.md
+          files: |
+            binary.*/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
