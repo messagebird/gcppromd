@@ -36,6 +36,7 @@ var (
 
 func main() {
 	flag.Parse()
+	log.SetFormatter(&log.JSONFormatter{})
 
 	idleConnsClosed := make(chan struct{})
 	httpSrv := http.Server{Addr: *flisten, Handler: requestLogger(http.DefaultServeMux)}
