@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"net/http"
+	"fmt"
 	"os"
 	"os/signal"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"time"
 
@@ -270,7 +272,7 @@ func runDaemon(
 				err = permErr
 			}
 			if err == nil {
-				err = os.Rename(f.Name(), cfg.Output)
+				err = moveFile(f.Name(), cfg.Output)
 			}
 			if err != nil {
 				log.WithError(err).WithField("file", cfg.Output).Error("could not write output file")
@@ -286,6 +288,30 @@ func runDaemon(
 type handle struct {
 	GCEDiscoveryWorkers chan *gcppromd.GCEReqInstanceDiscovery
 	GCPProjectDiscovery *gcppromd.GCPProjectDiscovery
+}
+
+func moveFile(sourcePath, destPath string) error {
+    inputFile, err := os.Open(sourcePath)
+    if err != nil {
+        return fmt.Errorf("Couldn't open source file: %s", err)
+    }
+    outputFile, err := os.Create(destPath)
+    if err != nil {
+        inputFile.Close()
+        return fmt.Errorf("Couldn't open dest file: %s", err)
+    }
+    defer outputFile.Close()
+    _, err = io.Copy(outputFile, inputFile)
+    inputFile.Close()
+    if err != nil {
+        return fmt.Errorf("Writing to output file failed: %s", err)
+    }
+    // The copy was successful, so now delete the original file
+    err = os.Remove(sourcePath)
+    if err != nil {
+        return fmt.Errorf("Failed removing original file: %s", err)
+    }
+    return nil
 }
 
 func requestLogger(handler http.Handler) http.Handler {
