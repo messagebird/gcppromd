@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -225,6 +226,11 @@ func runDaemon(
 	defer timer.Stop()
 
 	projectsSet := projectsSetExclude(cfg.Projects, cfg.ProjectsExcludePattern)
+
+	// Extract the directory to create a temporary file in the same directory as the output file.
+	// It is needed because not all operating systems or file systems support moving a file atomically
+	// from different directories or volumes.
+	tmpbase := filepath.Dir(cfg.Output)
 	for {
 		select {
 		case <-ctx.Done():
@@ -249,7 +255,7 @@ func runDaemon(
 			}
 
 			// write to a temporary file then swap it to ensure that the output file doesn't get corrupted or an half backed version is read.
-			f, err := ioutil.TempFile(os.TempDir(), "")
+			f, err := ioutil.TempFile(tmpbase, "")
 			if err != nil {
 				log.WithError(err).Error("can't open temporary file")
 				continue
