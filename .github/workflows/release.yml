@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - id: vars
-        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+        run: echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
   build:
     env:
       BIN_NAME: ${{ needs.get-tag.outputs.tag }}.${{ matrix.platform.goos }}-${{ matrix.platform.goarch }}
